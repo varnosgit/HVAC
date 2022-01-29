@@ -9,3 +9,4 @@
 void display_init(void);
 void display_log_init(void);
 void display_log_print(const char *string);
+void display_log_print(const String &s);
