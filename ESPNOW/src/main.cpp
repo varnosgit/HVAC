@@ -1,21 +1,27 @@
 #include <Arduino.h>
-//ss
+#include <Arduino_JSON.h>
+
 #include "WiFi.h"
 #include <esp_now.h>
 #include <Wire.h>
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
 #include <display.h>
+#include <EEPROM.h>
 
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
+// #include <BLEDevice.h>
+// #include <BLEUtils.h>
+// #include <BLEServer.h>
 
 #include "timerSetups.h"
 #include "algos.h"
 
+#include "ESPAsyncWebServer.h"
+
+
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
+#define EEPROM_SIZE 1
 
 RTC_DATA_ATTR int bootCount = 0;
 
@@ -25,9 +31,9 @@ TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite logtxt1 = TFT_eSprite(&tft); // Sprite object stext1
 
 
-BLEServer *pServer;
-BLEService *pService;
-BLECharacteristic *pCharacteristic;
+// BLEServer *pServer;
+// BLEService *pService;
+// BLECharacteristic *pCharacteristic;
 
 int interruptCounter_last = 0;
 extern volatile int interruptCounter;
@@ -87,6 +93,9 @@ void coreZEROTasks_code( void * pvParameters );
 
 void setup()
 {
+ // ledState = EEPROM.read(0);
+  // EEPROM.write(0, ledState);
+  // EEPROM.commit();
   display_init();
   display_log_init();   display_log_print("Initialising...");
  
