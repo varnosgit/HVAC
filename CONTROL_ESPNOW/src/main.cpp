@@ -23,6 +23,8 @@ extern uint8_t registerStatus;
 extern bool newData_flag;
 extern uint8_t myMAC_Address[], Brodcast_Address[], Controller_Address[], TERMO_Address[];
 
+
+char rxdata[5];
 RTC_DATA_ATTR int bootCount = 0;
 
 
@@ -42,7 +44,21 @@ esp_now_peer_info_t peerInfo2;
 ////////////////////////////////////////////////////////////////////////////////////
 void coreZEROTasks_code( void * pvParameters ){
   for(;;){
-    delay(4);
+  if (Serial2.available()) 
+  {
+    Serial2.read(rxdata, 5);
+    Serial.print("aaaaaaaaaaaa :");Serial.println(rxdata);
+    delay(10);
+    Serial2.print("abcde");
+  }
+  // if (rxdata[0] == '1')
+  // {
+  //   rxdata[0] = 'a';
+  //   Serial2.print("abcde");
+  // } 
+ // Serial.println("aaaaaaaaaaaaaaa");
+  
+  delay(100);
   } 
 }
 ////////////////////////////////////////////////////////////////////////////////////
@@ -63,11 +79,11 @@ void setup()
   // Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 
 
-  display_init();
-  display_log_init();   display_log_print("Initializing...");
-  delay(100); Serial.begin(115200);   display_log_print("Serial Debug connect!");
+ // display_init(); display_log_init();   display_log_print("Initializing...");
+  Serial.begin(115200); 
+  Serial2.begin(115200); //, SERIAL_8N1, RXD2, TXD2);
   //logtxt1.drawNumber(getCpuFrequencyMhz(), 71, 240, 2);
-  delay(300); display_log_print("CPU Freq.: " + String(getCpuFrequencyMhz()) + "MHz");
+  // delay(300); display_log_print("CPU Freq.: " + String(getCpuFrequencyMhz()) + "MHz");
   xTaskCreatePinnedToCore(
                     coreZEROTasks_code,      /* Task function. */
                     "Task1",        /* name of task. */
@@ -76,15 +92,16 @@ void setup()
                     1,              /* priority of the task */
                     &CoreZEROTasks, /* Task handle to keep track of created task */
                     0);             /* pin task to core 0 */                  
-  delay(500); 
-  delay(200); display_log_print("2nd Core setup!");
-  delay(100); timer_init(); display_log_print("Timers connected!");
+  // delay(500); 
+  // delay(200); display_log_print("2nd Core setup!");
+  // delay(100); timer_init(); display_log_print("Timers connected!");
 
   wireless_init();
 
 
 }
 ////////////////////////////////////////////////////////////////////////////////////
+
 void loop()
 {
   // if (registerStatus == 0)  // this vent is not registerd before
@@ -92,6 +109,7 @@ void loop()
   //   sendDataTo(Brodcast_Address, 0x01, Brodcast_Address);
   //   delay(2000);
   // }
+
   if (newData_flag)
   {
     newData_flag = false;
