@@ -6,6 +6,7 @@
 #include <EEPROM.h>
 #include <Wire.h>
 #include <SPI.h>
+#include "host_handle.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <display.h>
@@ -23,6 +24,11 @@ extern uint8_t registerStatus;
 extern bool newData_flag;
 extern uint8_t myMAC_Address[], Brodcast_Address[], Controller_Address[], TERMO_Address[];
 
+extern hc_message hc_mesg;
+extern uint8_t hc_sendFlag;
+extern uint8_t hc_recvFlag;
+
+char rxdata[5];
 RTC_DATA_ATTR int bootCount = 0;
 
 
@@ -40,10 +46,16 @@ int dataCounter = 0;
 
 esp_now_peer_info_t peerInfo2;
 ////////////////////////////////////////////////////////////////////////////////////
-void coreZEROTasks_code( void * pvParameters ){
-  for(;;){
-    delay(4);
-  } 
+void coreZEROTasks_code( void * parameter) {
+  for(;;) {
+    if (hc_sendFlag)
+      send_data_to_host();
+    if (receive_data_from_host())
+      hc_recvFlag = 1;
+    if (hc_recvFlag)
+      handle_host_message();
+    delay(200);
+  }
 }
 ////////////////////////////////////////////////////////////////////////////////////
 void setup()
@@ -63,11 +75,11 @@ void setup()
   // Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 
 
-  display_init();
-  display_log_init();   display_log_print("Initializing...");
-  delay(100); Serial.begin(115200);   display_log_print("Serial Debug connect!");
+ // display_init(); display_log_init();   display_log_print("Initializing...");
+  Serial.begin(115200); 
+  Serial2.begin(115200); //, SERIAL_8N1, RXD2, TXD2);
   //logtxt1.drawNumber(getCpuFrequencyMhz(), 71, 240, 2);
-  delay(300); display_log_print("CPU Freq.: " + String(getCpuFrequencyMhz()) + "MHz");
+  // delay(300); display_log_print("CPU Freq.: " + String(getCpuFrequencyMhz()) + "MHz");
   xTaskCreatePinnedToCore(
                     coreZEROTasks_code,      /* Task function. */
                     "Task1",        /* name of task. */
@@ -76,15 +88,16 @@ void setup()
                     1,              /* priority of the task */
                     &CoreZEROTasks, /* Task handle to keep track of created task */
                     0);             /* pin task to core 0 */                  
-  delay(500); 
-  delay(200); display_log_print("2nd Core setup!");
-  delay(100); timer_init(); display_log_print("Timers connected!");
+  // delay(500); 
+  // delay(200); display_log_print("2nd Core setup!");
+  // delay(100); timer_init(); display_log_print("Timers connected!");
 
   wireless_init();
 
 
 }
 ////////////////////////////////////////////////////////////////////////////////////
+
 void loop()
 {
   // if (registerStatus == 0)  // this vent is not registerd before
@@ -92,6 +105,7 @@ void loop()
   //   sendDataTo(Brodcast_Address, 0x01, Brodcast_Address);
   //   delay(2000);
   // }
+
   if (newData_flag)
   {
     newData_flag = false;
@@ -128,6 +142,37 @@ void loop()
       pairNew_device(myData.sender_MAC_addr);
       delay(500);
       sendDataTo(myData.sender_MAC_addr, 0x01, Brodcast_Address);
+    }
+    else if (myData._sender == 0x02) // data recieved from a termo
+    {
+            switch (myData._command)
+      {
+      case 0x01: // registeration command
+        registerStatus = 1;
+        EEPROM.write(0, registerStatus);
+        for(int i=0; i<6; i++) 
+        {
+          Controller_Address[i] = myData.sender_MAC_addr[i];
+          EEPROM.write(i+1, myData.sender_MAC_addr[i]);
+        }
+        pairNew_device(Controller_Address);
+        EEPROM.commit();
+        display_log_print("Controller saved :)");
+        break;
+        
+      case 0x02: 
+        if (myData.ventStatus== 0)
+            display_log_print("closing vent"); // vent door open/close command
+        else display_log_print("opening vent");
+        //vent_door(myData.ventStatus);
+          break;
+
+       case 0x05:  // setpointchange
+        Serial.print("Set point change to: "); Serial.println(myData.setPoint_temp);
+
+      default:
+        break;
+      }
     }
   }
 

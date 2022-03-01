@@ -64,7 +64,7 @@ void sendDataTo(uint8_t *mac_addr, uint8_t command, uint8_t *theData)
 
     myData._sender = 0x01; //0 unknown, 1 controller, 2 termostat, 3 vent
     myData._command = command; // register it to controller
-
+    myData.setPoint_temp = theData[0]; 
     if (esp_now_send(temp_send_mac, (uint8_t *) &myData, sizeof(myData)) == ESP_OK)
     {  
       Serial.println("Sent with success");
